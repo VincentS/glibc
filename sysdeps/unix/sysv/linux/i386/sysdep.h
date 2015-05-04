@@ -373,6 +373,42 @@ struct libc_do_syscall_args
     register unsigned int resultvar;					      \
     INTERNAL_SYSCALL_MAIN_##nr (name, err, args);			      \
     (int) resultvar; })
+
+/* Same as INTERNAL_SYSCALL, but for non-constant name argument.  */
+#define INTERNAL_SYSCALL_MAIN_NCS_0(name, err, args...) \
+    INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, 0, args)
+#define INTERNAL_SYSCALL_MAIN_NCS_1(name, err, args...) \
+    INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, 1, args)
+#define INTERNAL_SYSCALL_MAIN_NCS_2(name, err, args...) \
+    INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, 2, args)
+#define INTERNAL_SYSCALL_MAIN_NCS_3(name, err, args...) \
+    INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, 3, args)
+#define INTERNAL_SYSCALL_MAIN_NCS_4(name, err, args...) \
+    INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, 4, args)
+#define INTERNAL_SYSCALL_MAIN_NCS_5(name, err, args...) \
+    INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, 5, args)
+/* The NCS version is different because it has a non-constant 'name' arg
+   and then requires a different asm constraint ("0" instead of "i").  */
+#define INTERNAL_SYSCALL_MAIN_NCS_6(name, err, arg1, arg2, arg3,	\
+				arg4, arg5, arg6)			\
+  struct libc_do_syscall_args _xv =					\
+    {									\
+      (int) (arg1),							\
+      (int) (arg5),							\
+      (int) (arg6)							\
+    };									\
+    asm volatile (							\
+    "movl %1, %%eax\n\t"						\
+    "call __libc_do_syscall"						\
+    : "=a" (resultvar)							\
+    : "0" (name), "c" (arg2), "d" (arg3), "S" (arg4), "D" (&_xv)        \
+    : "memory", "cc")
+#define INTERNAL_SYSCALL_NCS(name, err, nr, args...) \
+  ({									      \
+    register unsigned int resultvar;					      \
+    INTERNAL_SYSCALL_MAIN_NCS_##nr (name, err, args);			      \
+    (int) resultvar; })
+
 #ifdef I386_USE_SYSENTER
 # ifdef SHARED
 #  define INTERNAL_SYSCALL_MAIN_INLINE(name, err, nr, args...) \
@@ -385,9 +421,7 @@ struct libc_do_syscall_args
     : "=a" (resultvar)							      \
     : "i" (__NR_##name), "i" (offsetof (tcbhead_t, sysinfo))		      \
       ASMFMT_##nr(args) : "memory", "cc")
-#  define INTERNAL_SYSCALL_NCS(name, err, nr, args...) \
-  ({									      \
-    register unsigned int resultvar;					      \
+#  define INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, nr, args...) \
     EXTRAVAR_##nr							      \
     asm volatile (							      \
     LOADARGS_##nr							      \
@@ -395,8 +429,7 @@ struct libc_do_syscall_args
     RESTOREARGS_##nr							      \
     : "=a" (resultvar)							      \
     : "0" (name), "i" (offsetof (tcbhead_t, sysinfo))			      \
-      ASMFMT_##nr(args) : "memory", "cc");				      \
-    (int) resultvar; })
+      ASMFMT_##nr(args) : "memory", "cc")
 # else
 #  define INTERNAL_SYSCALL_MAIN_INLINE(name, err, nr, args...) \
     EXTRAVAR_##nr							      \
@@ -407,17 +440,14 @@ struct libc_do_syscall_args
     RESTOREARGS_##nr							      \
     : "=a" (resultvar)							      \
     : "i" (__NR_##name) ASMFMT_##nr(args) : "memory", "cc")
-#  define INTERNAL_SYSCALL_NCS(name, err, nr, args...) \
-  ({									      \
-    register unsigned int resultvar;					      \
+#  define INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, nr, args...) \
     EXTRAVAR_##nr							      \
     asm volatile (							      \
     LOADARGS_##nr							      \
     "call *_dl_sysinfo\n\t"						      \
     RESTOREARGS_##nr							      \
     : "=a" (resultvar)							      \
-    : "0" (name) ASMFMT_##nr(args) : "memory", "cc");			      \
-    (int) resultvar; })
+    : "0" (name) ASMFMT_##nr(args) : "memory", "cc")
 # endif
 #else
 # define INTERNAL_SYSCALL_MAIN_INLINE(name, err, nr, args...) \
@@ -429,17 +459,14 @@ struct libc_do_syscall_args
     RESTOREARGS_##nr							      \
     : "=a" (resultvar)							      \
     : "i" (__NR_##name) ASMFMT_##nr(args) : "memory", "cc")
-# define INTERNAL_SYSCALL_NCS(name, err, nr, args...) \
-  ({									      \
-    register unsigned int resultvar;					      \
+# define INTERNAL_SYSCALL_MAIN_INLINE_NCS(name, err, nr, args...) \
     EXTRAVAR_##nr							      \
     asm volatile (							      \
     LOADARGS_##nr							      \
     "int $0x80\n\t"							      \
     RESTOREARGS_##nr							      \
     : "=a" (resultvar)							      \
-    : "0" (name) ASMFMT_##nr(args) : "memory", "cc");			      \
-    (int) resultvar; })
+    : "0" (name) ASMFMT_##nr(args) : "memory", "cc")
 #endif
 
 #undef INTERNAL_SYSCALL_DECL
@@ -451,6 +478,14 @@ struct libc_do_syscall_args
 
 #undef INTERNAL_SYSCALL_ERRNO
 #define INTERNAL_SYSCALL_ERRNO(val, err)	(-(val))
+
+#undef SYSCALL_CANCEL_ERROR
+#define SYSCALL_CANCEL_ERROR(__val) \
+  ((unsigned int) (__val) >= 0xfffff001u)
+
+#undef SYSCALL_CANCEL_ERRNO
+#define SYSCALL_CANCEL_ERRNO(__val) \
+  (-(__val))
 
 #define LOADARGS_0
 #ifdef __PIC__
