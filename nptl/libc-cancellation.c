@@ -50,7 +50,7 @@ __syscall_cancel (__syscall_arg_t nr, __syscall_arg_t a1,
   long int result;
 
   /* If cancellation is not enabled, call the syscall directly.  */
-  if (pd->cancelhandling & CANCELSTATE_BITMASK)
+  if (pd->cancelstate == PTHREAD_CANCEL_DISABLE)
     {
       INTERNAL_SYSCALL_DECL (err);
       result = INTERNAL_SYSCALL_NCS (nr, err, 6, a1, a2, a3, a4, a5, a6);
@@ -66,7 +66,7 @@ __syscall_cancel (__syscall_arg_t nr, __syscall_arg_t a1,
 
   if ((result == -EINTR)
       && (pd->cancelhandling & CANCELED_BITMASK)
-      && !(pd->cancelhandling & CANCELSTATE_BITMASK))
+      && (pd->cancelstate == PTHREAD_CANCEL_ENABLE))
     __do_cancel ();
 
   return result;

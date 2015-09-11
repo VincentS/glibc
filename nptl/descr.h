@@ -255,14 +255,9 @@ struct pthread
   struct pthread_unwind_buf *cleanup_jmp_buf;
 #define HAVE_CLEANUP_JMP_BUF
 
-  /* Flags determining processing of cancellation.  */
+  /* Flags determining processing of cancellation.  This flags might be
+     accessed concurrently, so atomic operations are required.  */
   int cancelhandling;
-  /* Bit set if cancellation is disabled.  */
-#define CANCELSTATE_BIT		0
-#define CANCELSTATE_BITMASK	(0x01 << CANCELSTATE_BIT)
-  /* Bit set if asynchronous cancellation mode is selected.  */
-#define CANCELTYPE_BIT		1
-#define CANCELTYPE_BITMASK	(0x01 << CANCELTYPE_BIT)
   /* Bit set if threads is canceled.  */
 #define CANCELED_BIT		2
 #define CANCELED_BITMASK	(0x01 << CANCELED_BIT)
@@ -275,16 +270,29 @@ struct pthread
   /* Bit set if thread is supposed to change XID.  */
 #define SETXID_BIT		5
 #define SETXID_BITMASK		(0x01 << SETXID_BIT)
-  /* Mask for the rest.  Helps the compiler to optimize.  */
-#define CANCEL_RESTMASK		0xffffffc0
 
-#define CANCEL_ENABLED_AND_CANCELED(value) \
-  (((value) & (CANCELSTATE_BITMASK | CANCELED_BITMASK | EXITING_BITMASK	      \
-	       | CANCEL_RESTMASK | TERMINATED_BITMASK)) == CANCELED_BITMASK)
-#define CANCEL_ENABLED_AND_CANCELED_AND_ASYNCHRONOUS(value) \
-  (((value) & (CANCELSTATE_BITMASK | CANCELTYPE_BITMASK | CANCELED_BITMASK    \
-	       | EXITING_BITMASK | CANCEL_RESTMASK | TERMINATED_BITMASK))     \
-   == (CANCELTYPE_BITMASK | CANCELED_BITMASK))
+  /* Cancellation type (deferred/asynchrnonous) and state (enable/disable).
+     Both members are accessed only in the context of the own thread, either
+     by the change functions (pthread_setcancel{type,state}), but thread
+     initialization routine or by the cancellation signal handler
+     (sigcancel_handler).  */
+  int canceltype;
+  int cancelstate;
+
+  /* These helper macros should be used only in context of its own thread,
+     since they access non atomic members (canceltype and cancelstate).  */
+#define CANCEL_CANCELED(self)						     \
+   ((self->cancelhandling & (CANCELED_BITMASK | EXITING_BITMASK		     \
+                             | TERMINATED_BITMASK)) == CANCELED_BITMASK)
+
+#define CANCEL_ENABLED_AND_CANCELED(self)				     \
+   ((THREAD_GETMEM (self, cancelstate) == PTHREAD_CANCEL_ENABLE)	     \
+     && CANCEL_CANCELED(self))
+
+#define CANCEL_ENABLED_AND_CANCELED_AND_ASYNCHRONOUS(self)		     \
+   ((THREAD_GETMEM (self, cancelstate) == PTHREAD_CANCEL_ENABLE)	     \
+     && (THREAD_GETMEM (self, canceltype) == PTHREAD_CANCEL_ASYNCHRONOUS)    \
+     && CANCEL_CANCELED(self))
 
   /* Flags.  Including those copied from the thread attribute.  */
   int flags;

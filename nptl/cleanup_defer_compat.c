@@ -20,10 +20,8 @@
 
 
 void
-_pthread_cleanup_push_defer (buffer, routine, arg)
-     struct _pthread_cleanup_buffer *buffer;
-     void (*routine) (void *);
-     void *arg;
+_pthread_cleanup_push_defer (struct _pthread_cleanup_buffer *buffer, 
+			     void (*routine) (void *), void *arg)
 {
   struct pthread *self = THREAD_SELF;
 
@@ -31,27 +29,8 @@ _pthread_cleanup_push_defer (buffer, routine, arg)
   buffer->__arg = arg;
   buffer->__prev = THREAD_GETMEM (self, cleanup);
 
-  int cancelhandling = THREAD_GETMEM (self, cancelhandling);
-
-  /* Disable asynchronous cancellation for now.  */
-  if (__glibc_unlikely (cancelhandling & CANCELTYPE_BITMASK))
-    while (1)
-      {
-	int curval = THREAD_ATOMIC_CMPXCHG_VAL (self, cancelhandling,
-						cancelhandling
-						& ~CANCELTYPE_BITMASK,
-						cancelhandling);
-	if (__glibc_likely (curval == cancelhandling))
-	  /* Successfully replaced the value.  */
-	  break;
-
-	/* Prepare for the next round.  */
-	cancelhandling = curval;
-      }
-
-  buffer->__canceltype = (cancelhandling & CANCELTYPE_BITMASK
-			  ? PTHREAD_CANCEL_ASYNCHRONOUS
-			  : PTHREAD_CANCEL_DEFERRED);
+  buffer->__canceltype = THREAD_GETMEM (self, canceltype);
+  self->canceltype = PTHREAD_CANCEL_DEFERRED;
 
   THREAD_SETMEM (self, cleanup, buffer);
 }
@@ -59,32 +38,17 @@ strong_alias (_pthread_cleanup_push_defer, __pthread_cleanup_push_defer)
 
 
 void
-_pthread_cleanup_pop_restore (buffer, execute)
-     struct _pthread_cleanup_buffer *buffer;
-     int execute;
+_pthread_cleanup_pop_restore (struct _pthread_cleanup_buffer *buffer,
+			      int execute)
 {
   struct pthread *self = THREAD_SELF;
 
   THREAD_SETMEM (self, cleanup, buffer->__prev);
 
-  int cancelhandling;
-  if (__builtin_expect (buffer->__canceltype != PTHREAD_CANCEL_DEFERRED, 0)
-      && ((cancelhandling = THREAD_GETMEM (self, cancelhandling))
-	  & CANCELTYPE_BITMASK) == 0)
+  if (__glibc_unlikely (buffer->__canceltype == PTHREAD_CANCEL_ASYNCHRONOUS)
+      && (self->canceltype == PTHREAD_CANCEL_ASYNCHRONOUS))
     {
-      while (1)
-	{
-	  int curval = THREAD_ATOMIC_CMPXCHG_VAL (self, cancelhandling,
-						  cancelhandling
-						  | CANCELTYPE_BITMASK,
-						  cancelhandling);
-	  if (__glibc_likely (curval == cancelhandling))
-	    /* Successfully replaced the value.  */
-	    break;
-
-	  /* Prepare for the next round.  */
-	  cancelhandling = curval;
-	}
+      self->canceltype = PTHREAD_CANCEL_ASYNCHRONOUS;
 
       CANCELLATION_P (self);
     }

@@ -230,11 +230,11 @@ extern int __pthread_debug attribute_hidden;
 #endif
 
 
-/* Cancellation test.  */
+/* Cancellation test.  This macro should be used only in the context of the
+   own thread, since it accesses non atomic members.  */
 #define CANCELLATION_P(self) \
   do {									      \
-    int cancelhandling = THREAD_GETMEM (self, cancelhandling);		      \
-    if (CANCEL_ENABLED_AND_CANCELED (cancelhandling))			      \
+    if (CANCEL_ENABLED_AND_CANCELED(self))				      \
       {									      \
 	THREAD_SETMEM (self, result, PTHREAD_CANCELED);			      \
 	__do_cancel ();							      \
@@ -277,23 +277,8 @@ __do_cancel (void)
 {
   struct pthread *self = THREAD_SELF;
 
-  /* Make sure we get no more cancellations by clearing the cancel
-     state.  */
-  int oldval = THREAD_GETMEM (self, cancelhandling);
-  while (1)
-    {
-      int newval = (oldval | CANCELSTATE_BITMASK);
-      newval &= ~(CANCELTYPE_BITMASK);
-      if (oldval == newval)
-	break;
-
-      int curval = THREAD_ATOMIC_CMPXCHG_VAL (self, cancelhandling, newval,
-					  oldval);
-      if (__glibc_likely (curval == oldval))
-	break;
-      oldval = curval;
-    }
-  THREAD_ATOMIC_BIT_SET (self, cancelhandling, 
+  /* Make sure we get no more cancellations.  */
+  self->cancelstate = PTHREAD_CANCEL_DISABLE;
 
   THREAD_SETMEM (self, result, PTHREAD_CANCELED);
 

@@ -208,7 +208,7 @@ sigcancel_handler (int sig, siginfo_t *si, void *ctx)
   extern const char __syscall_cancel_arch_start[1];
   extern const char __syscall_cancel_arch_end[1];
 
-  if (((pd->cancelhandling & (CANCELSTATE_BITMASK)) != 0)
+  if ((pd->cancelstate == PTHREAD_CANCEL_DISABLE)
       || ((pd->cancelhandling & CANCELED_BITMASK) == 0))
     return;
 
@@ -220,7 +220,7 @@ sigcancel_handler (int sig, siginfo_t *si, void *ctx)
      reads or writes, for instance), the kernel will set the IP to after
      '__syscall_cancel_arch_end', thus disabling the cancellation and allowing
      the process to handle such conditions.  */
-  if (pd->cancelhandling & CANCELTYPE_BITMASK ||
+  if ((pd->canceltype == PTHREAD_CANCEL_ASYNCHRONOUS) ||
       (tip >= __syscall_cancel_arch_start && tip < __syscall_cancel_arch_end))
     {
       THREAD_ATOMIC_BIT_SET (self, cancelhandling, EXITING_BIT);
