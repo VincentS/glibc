@@ -54,10 +54,7 @@ __fxstatat (int vers, int fd, const char *file, struct stat *st, int flag)
 #endif
     }
   else
-    {
-      __set_errno (INTERNAL_SYSCALL_ERRNO (result, err));
-      return -1;
-    }
+    return INLINE_SYSCALL_ERROR_RETURN (INTERNAL_SYSCALL_ERRNO (result, err));
 }
 libc_hidden_def (__fxstatat)
 #ifdef XSTAT_IS_XSTAT64
