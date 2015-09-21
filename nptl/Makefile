@@ -257,6 +257,7 @@ tests = tst-typesizes \
 	tst-cancel11 tst-cancel12 tst-cancel13 tst-cancel14 tst-cancel15 \
 	tst-cancel16 tst-cancel17 tst-cancel18 tst-cancel19 tst-cancel20 \
 	tst-cancel21 tst-cancel22 tst-cancel23 tst-cancel24 tst-cancel25 \
+	tst-cancel26 tst-cancel27 \
 	tst-cancel-self tst-cancel-self-cancelstate \
 	tst-cancel-self-canceltype tst-cancel-self-testcancel \
 	tst-cleanup0 tst-cleanup1 tst-cleanup2 tst-cleanup3 tst-cleanup4 \
@@ -394,8 +395,7 @@ tests-reverse += tst-cancel5 tst-cancel23 tst-vfork1x tst-vfork2x
 ifeq ($(run-built-tests),yes)
 tests-special += $(objpfx)tst-stack3-mem.out $(objpfx)tst-oddstacklimit.out
 ifeq ($(build-shared),yes)
-tests-special += $(objpfx)tst-tls6.out $(objpfx)tst-cleanup0-cmp.out \
-		 $(objpfx)tst-cancel-wrappers.out
+tests-special += $(objpfx)tst-tls6.out $(objpfx)tst-cleanup0-cmp.out
 endif
 endif
 
@@ -607,7 +607,7 @@ $(objpfx)$(multidir)/crtn.o: $(objpfx)crtn.o $(objpfx)$(multidir)/
 endif
 
 generated += libpthread_nonshared.a \
-	     multidir.mk tst-atfork2.mtrace tst-cancel-wrappers.out \
+	     multidir.mk tst-atfork2.mtrace \
 	     tst-tls6.out
 
 generated += $(objpfx)tst-atfork2.mtrace \
@@ -622,18 +622,6 @@ generated += banner.h
 LDFLAGS-pthread.so += -e __nptl_main
 # pt-interp.c exists just to get the runtime linker path into libpthread.so.
 $(objpfx)pt-interp.os: $(common-objpfx)runtime-linker.h
-endif
-
-ifeq ($(run-built-tests),yes)
-ifeq (yes,$(build-shared))
-$(objpfx)tst-cancel-wrappers.out: tst-cancel-wrappers.sh
-	$(SHELL) $< '$(NM)' \
-		    $(common-objpfx)libc_pic.a \
-		    $(common-objpfx)libc.a \
-		    $(objpfx)libpthread_pic.a \
-		    $(objpfx)libpthread.a > $@; \
-	$(evaluate-test)
-endif
 endif
 
 tst-exec4-ARGS = $(host-test-program-cmd)
