@@ -1,4 +1,12 @@
 2015-09-24  Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+
+	* sysdeps/unix/sysv/linux/mips/mips64/syscalls.list (lseek): Set as
+	non-cancelable.
+	* sysdeps/unix/sysv/linux/wordsize-64/syscalls.list (llseek): Likewise.
+	* sysdeps/unix/sysv/linux/x86_64/x32/lseek.S (__libc_lseek64):
+	Likewise.
+
+2015-09-24  Adhemerval Zanella  <adhemerval.zanella@linaro.org>
 	    Phil Blundell <pb@pbcui.dot.net>
 
 	* nptl/tst-cancel26.c: New file.
