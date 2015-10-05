@@ -1,3 +1,8 @@
+THIS IS NOT THE OFFICIAL REPO!
+
+This repo was cloned from git://sourceware.org/git/glibc.git and is the most recent version 2.22 (2015-08-14)
+at the time of writing.
+
 This directory contains the sources of the GNU C Library.
 See the file "version.h" for what release version you have.
 
